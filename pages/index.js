@@ -5,6 +5,7 @@ import { Button, Text } from '@chakra-ui/react'
 import { useAccount, useContract, useProvider, useSigner } from 'wagmi'
 import RegistryAbi from "../abi/IRegistry.json"
 import AccountAbi from "../abi/Account.json"
+import ERC712Abi from "../abi/ERC712.json"
 import { useState, useEffect } from "react";
 import { BigNumber, ethers } from 'ethers'
 import { getAccount, prepareExecuteCall } from "@tokenbound/sdk-ethers";
@@ -12,9 +13,6 @@ import { getAccount, prepareExecuteCall } from "@tokenbound/sdk-ethers";
 import { UserOperationBuilder } from "userop";
 import { Client } from "userop";
 import { Presets } from "userop";
-
-
-
 
 
 export default function Home() {
@@ -37,7 +35,8 @@ export default function Home() {
   const CHAIN_ID = 80001
 
   const ENTRY_POINT = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
-  const BUNDLER_RPC = "https://api.stackup.sh/v1/node/cdfe0de4e20e67c8ab40cbd357c2d152fd707c26e7ff3e52dc2a8a8fefc32bca"
+  // const BUNDLER_RPC = "https://api.stackup.sh/v1/node/cdfe0de4e20e67c8ab40cbd357c2d152fd707c26e7ff3e52dc2a8a8fefc32bca"
+  const BUNDLER_RPC = "https://mumbai.voltaire.candidewallet.com/rpc"
 
   let provider = useProvider()
   let { data: signer } = useSigner()
@@ -64,6 +63,12 @@ export default function Home() {
     signerOrProvider: provider,
   })
 
+  const readERC712Contract = useContract({
+    address: "0x557Ccde073d40D9c469788e7144013773d9563fa",
+    abi: ERC712Abi,
+    signerOrProvider: provider,
+  })
+
 
   const initClient = async () => {
     const client = await Client.init(BUNDLER_RPC, ENTRY_POINT);
@@ -76,9 +81,11 @@ export default function Home() {
     //   signerOrProvider: provider,
     // })
   }
-  let builder = new UserOperationBuilder().useDefaults({ sender: smartAccount });
+  // let builder = new UserOperationBuilder().useDefaults({ sender: smartAccount });
+  let builder = new UserOperationBuilder().useDefaults({});
 
   const bundle = async () => {
+    builder.setSender(smartAccount)
     const nonce = await getNonce(smartAccount)
     builder.setNonce(nonce)
     console.log(signature)
@@ -143,7 +150,7 @@ export default function Home() {
           },
           {
             name: "allowedFunctions",
-            type: "string[3]",
+            type: "string",
           },
           {
             name: "sessionNonce",
@@ -153,7 +160,7 @@ export default function Home() {
       },
       {
         from: address,
-        allowedFunctions: ["post", "comment", "mirror"],
+        allowedFunctions: "post,comment,mirror",
         sessionNonce: BigNumber.from(sessionNonce)
       }
     )
@@ -217,6 +224,12 @@ export default function Home() {
     const res = await tx.wait()
     console.log(res)
   }
+
+  const sig = async () => {
+    console.log(signature)
+    const res = await readERC712Contract.isValidSignature(ethers.constants.HashZero, signature)
+    console.log(res)
+  }
   return (
     <>
       <Head>
@@ -234,7 +247,8 @@ export default function Home() {
       <Button colorScheme='blue' onClick={() => bundle()}>Bundle</Button>
       <Button colorScheme='red' onClick={() => signNon712()}>Sign</Button>
       <Button colorScheme='purple' onClick={() => checkSig()}>Check sig</Button>
-      <Button colorScheme='purple' onClick={() => owner()}>Owner</Button>
+      <Button colorScheme='purple' onClick={() => sign()}>Sign 712</Button>
+      <Button colorScheme='blue' onClick={() => sig()}>sig</Button>
     </>
   )
 }
