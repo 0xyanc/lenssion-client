@@ -1,11 +1,146 @@
 import Head from 'next/head'
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
 import styles from '@/styles/Home.module.css'
+import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { Button, Text } from '@chakra-ui/react'
+import { useAccount, useContract, useProvider, useSigner } from 'wagmi'
+import RegistryAbi from "../abi/IRegistry.json"
+import { useState, useEffect } from "react";
+import { BigNumber, ethers } from 'ethers'
+import { getAccount, prepareExecuteCall } from "@tokenbound/sdk-ethers";
 
-const inter = Inter({ subsets: ['latin'] })
+import { UserOperationBuilder } from "userop";
+import { Client } from "userop";
+import { Presets } from "userop";
+
+
+
+
 
 export default function Home() {
+  const { address } = useAccount();
+  const [smartAccount, setSmartAccount] = useState("")
+  const [client, setClient] = useState(null)
+  const [sessionNonce, setSessionNonce] = useState(0)
+  useEffect(() => {
+    initClient()
+  }, []);
+
+
+  const LENS_HUB_ADDRESS = "0x60Ae865ee4C725cd04353b5AAb364553f56ceF82"
+  const REGISTRY_ADDRESS = "0x02101dfb77fde026414827fdc604ddaf224f0921"
+  const LENS_PROFILE_TOKEN = "0x60Ae865ee4C725cd04353b5AAb364553f56ceF82"
+  const ACCOUNT_PROXY = "0x1de49154786e7C713b9928D7E7A0cDC429dE292b"
+  const ACCOUNT_IMPL = "0x160824A797074c96F2Fd71C5a74332D8326E6e68"
+  const CHAIN_ID = 80001
+
+  const ENTRY_POINT = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
+  const BUNDLER_RPC = "https://api.stackup.sh/v1/node/cdfe0de4e20e67c8ab40cbd357c2d152fd707c26e7ff3e52dc2a8a8fefc32bca"
+
+  let provider = useProvider()
+  let { data: signer } = useSigner()
+  const writeRegistryContract = useContract({
+    address: REGISTRY_ADDRESS,
+    abi: RegistryAbi,
+    signerOrProvider: signer,
+  })
+  const readRegistryContract = useContract({
+    address: REGISTRY_ADDRESS,
+    abi: RegistryAbi,
+    signerOrProvider: provider,
+  })
+
+
+  const initClient = async () => {
+    const client = await Client.init(BUNDLER_RPC, ENTRY_POINT);
+    setClient(client)
+  }
+  const getSessionNonce = async (account) => {
+    // const readSmartAccountContract = useContract({
+    //   address: account,
+    //   abi: AccountAbi,
+    //   signerOrProvider: provider,
+    // })
+  }
+  const builder = new UserOperationBuilder().useDefaults({ sender: "0x78f83b36468bFf785046974e21A1449b47FD7e74" });
+
+  const bundle = async () => {
+
+    // provider is an ethers.js JSON-RPC provider.
+    // builder = builder.useMiddleware(Presets.Middleware.estimateUserOperationGas(provider))
+    // builder = builder.useMiddleware(Presets.Middleware.getGasPrice(provider))
+    // builder = builder.useMiddleware(
+    //   Presets.Middleware.verifyingPaymaster(paymasterRpc, paymasterCtx)
+    // )
+    const response = await client.sendUserOperation(builder);
+    const userOperationEvent = await response.wait();
+  }
+
+  const sign = async () => {
+    const signature = await signer._signTypedData(
+      {
+        name: "Lenssion",
+        version: "1",
+        chainId: 30001,
+        verifyingContract: smartAccount,
+      },
+      {
+        Session: [
+          {
+            name: "from",
+            type: "address",
+          },
+          {
+            name: "to",
+            type: "address",
+          },
+          {
+            name: "allowedFunctions",
+            type: "string[]",
+          },
+          {
+            name: "sessionNonce",
+            type: "uint256",
+          },
+        ],
+      },
+      {
+        from: address,
+        to: smartAccount,
+        allowedFunctions: ["post", "comment", "mirror"],
+        sessionNonce: BigNumber.from(sessionNonce)
+      }
+    )
+    console.log(signature)
+  }
+
+
+  const account = async () => {
+    const address = await readRegistryContract.account(ACCOUNT_IMPL, CHAIN_ID, LENS_PROFILE_TOKEN, 30885, 123)
+    getSessionNonce(address)
+    setSmartAccount(address)
+    return address
+  }
+
+  const createAccount = async () => {
+    const address = await writeRegistryContract.createAccount(ACCOUNT_IMPL, CHAIN_ID, LENS_PROFILE_TOKEN, 30885, 123, [])
+  }
+
+  const send = async () => {
+    const to = "0x78f83b36468bFf785046974e21A1449b47FD7e74"; // any address
+    const value = ethers.utils.parseEther("0.1"); // amount of ETH to send
+    const data = "0x"; // calldata
+
+    const transactionData = await prepareExecuteCall(
+      smartAccount,
+      to,
+      value,
+      data
+    );
+
+    // Execute encoded call
+    const { hash } = await signer.sendTransaction(transactionData);
+    console.log(hash)
+  }
   return (
     <>
       <Head>
@@ -14,101 +149,13 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={`${styles.main} ${inter.className}`}>
-        <div className={styles.description}>
-          <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>pages/index.js</code>
-          </p>
-          <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
-          </div>
-        </div>
-
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-        </div>
-
-        <div className={styles.grid}>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2>
-              Docs <span>-&gt;</span>
-            </h2>
-            <p>
-              Find in-depth information about Next.js features and&nbsp;API.
-            </p>
-          </a>
-
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2>
-              Templates <span>-&gt;</span>
-            </h2>
-            <p>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2>
-              Deploy <span>-&gt;</span>
-            </h2>
-            <p>
-              Instantly deploy your Next.js site to a shareable URL
-              with&nbsp;Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
+      <ConnectButton />
+      <Button colorScheme="green" onClick={() => account()}>Get Account</Button>
+      <Text>Address is {smartAccount}</Text>
+      <Button colorScheme="green" onClick={() => createAccount()}>Create Account</Button>
+      <Button colorScheme='blue' onClick={() => send()}>Send</Button>
+      <Button colorScheme='blue' onClick={() => bundle()}>Bundle</Button>
+      <Button colorScheme='red' onClick={() => sign()}>Sign</Button>
     </>
   )
 }

@@ -9,8 +9,17 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@chakra-ui/react": "^2.6.1",
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "@rainbow-me/rainbowkit": "0.8.1",
+    "@tokenbound/sdk-ethers": "^0.1.1",
+    "ethers": "5.7.2",
+    "framer-motion": "^10.12.10",
     "next": "13.4.2",
     "react": "18.2.0",
-    "react-dom": "18.2.0"
+    "react-dom": "18.2.0",
+    "userop": "^0.2.0",
+    "wagmi": "0.11.7"
   }
 }
