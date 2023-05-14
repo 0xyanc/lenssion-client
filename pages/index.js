@@ -351,6 +351,7 @@ export default function Home() {
           <Button mt="0.5rem" colorScheme='green' onClick={() => bundle()}>Post</Button>
           <Button mt="0.5rem" colorScheme='green' onClick={() => bundle()}>Comment</Button>
           <Button mt="0.5rem" colorScheme='green' onClick={() => bundle()}>Mirror</Button>
+          <Button mt="0.5rem" colorScheme='purple'>End Session</Button>
         </Flex>
       </Flex >
     </>
