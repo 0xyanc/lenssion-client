@@ -1,10 +1,10 @@
-import { Flex, Text } from "@chakra-ui/react";
+import { Flex, Image, Text } from "@chakra-ui/react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 
 const Header = () => {
   return (
     <Flex h="5vh" p="2rem" justifyContent="space-between" alignItems="center">
-      <Text as="b">Lenssion</Text>
+      <Image boxSize="80px" src="/logo.png" alt="Logo" />
 
       <ConnectButton showBalance={false} />
     </Flex>

@@ -357,6 +357,17 @@ export default function Home() {
           <Button mt="0.5rem" colorScheme='green' onClick={() => bundle()}>Comment</Button>
           <Button mt="0.5rem" colorScheme='green' onClick={() => bundle()}>Mirror</Button>
           <Button mt="0.5rem" colorScheme='purple'>End Session</Button>
+          <Image mt="6rem" src="https://noun.pics/122" alt="Nouns" boxSize='100px' />
+        </Flex>
+        <Flex ml="8rem" direction="column">
+          <Image mb="8rem" src="https://noun.pics/112" alt="Nouns" boxSize='100px' />
+          <Image mb="8rem" src="https://noun.pics/118" alt="Nouns" boxSize='100px' />
+          <Image src="https://noun.pics/133" alt="Nouns" boxSize='100px' />
+        </Flex>
+        <Flex ml="8rem" direction="column">
+          <Image mb="8rem" src="https://noun.pics/155" alt="Nouns" boxSize='100px' />
+          <Image mb="8rem" src="https://noun.pics/166" alt="Nouns" boxSize='100px' />
+          <Image src="https://noun.pics/188" alt="Nouns" boxSize='100px' />
         </Flex>
       </Flex >
     </>
