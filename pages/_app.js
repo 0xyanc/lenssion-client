@@ -11,6 +11,7 @@ import { mainnet, polygon, optimism, arbitrum, polygonMumbai } from 'wagmi/chain
 import { alchemyProvider } from 'wagmi/providers/alchemy';
 import { publicProvider } from 'wagmi/providers/public';
 import { ChakraProvider } from '@chakra-ui/react';
+import Layout from '../components/Layout/Layout';
 
 const { chains, provider } = configureChains(
   [mainnet, polygon, optimism, arbitrum, polygonMumbai],
@@ -35,7 +36,9 @@ export default function App({ Component, pageProps }) {
     <WagmiConfig client={wagmiClient}>
       <RainbowKitProvider chains={chains}>
         <ChakraProvider>
-          <Component {...pageProps} />
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
         </ChakraProvider>
       </RainbowKitProvider>
     </WagmiConfig>

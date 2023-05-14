@@ -1,11 +1,14 @@
 import Head from 'next/head'
 import styles from '@/styles/Home.module.css'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { Button, Text } from '@chakra-ui/react'
+import { Box, Button, Flex, Image, Input, Text } from '@chakra-ui/react'
 import { useAccount, useContract, useProvider, useSigner } from 'wagmi'
 import RegistryAbi from "../abi/IRegistry.json"
 import AccountAbi from "../abi/Account.json"
 import ERC712Abi from "../abi/ERC712.json"
+import EntryPointAbi from "../abi/EntryPoint.json"
+import LensHubAbi from "../abi/LensHub.json"
+import AbstractBallAbi from "../abi/AbstractBall.json"
 import { useState, useEffect } from "react";
 import { BigNumber, ethers } from 'ethers'
 import { getAccount, prepareExecuteCall } from "@tokenbound/sdk-ethers";
@@ -13,30 +16,39 @@ import { getAccount, prepareExecuteCall } from "@tokenbound/sdk-ethers";
 import { UserOperationBuilder } from "userop";
 import { Client } from "userop";
 import { Presets } from "userop";
+import { Interface } from 'ethers/lib/utils.js'
 
 
 export default function Home() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const [smartAccount, setSmartAccount] = useState("")
   const [client, setClient] = useState(null)
   const [sessionNonce, setSessionNonce] = useState(0)
   const [signature, setSignature] = useState("")
+  const [pfpUrl, setPfpUrl] = useState("")
+  const [handle, setHandle] = useState("")
+  const [accountCreated, setAccountCreated] = useState(false)
+  const [tokenId, setTokenId] = useState(0)
   useEffect(() => {
-    initClient()
-  }, []);
+    if (isConnected) {
+      initClient()
+      fetchLensNFT()
+      account()
+    }
+  }, [address, isConnected]);
 
 
   const LENS_HUB_ADDRESS = "0x60Ae865ee4C725cd04353b5AAb364553f56ceF82"
   const REGISTRY_ADDRESS = "0x02101dfb77fde026414827fdc604ddaf224f0921"
   const LENS_PROFILE_TOKEN = "0x60Ae865ee4C725cd04353b5AAb364553f56ceF82"
-  const ACCOUNT_PROXY = "0xFEE9bd38AeABD513833e5691Bf1e62D371Be858b"
+  const ACCOUNT_PROXY = "0x955303d4d6e30D8844862A8b070c5f83561f5Ff7"
   // const ACCOUNT_IMPL = "0x160824A797074c96F2Fd71C5a74332D8326E6e68"
-  const ACCOUNT_IMPL = "0xcFEa242d212cf086eF0a98A088c878C6079f9FBC"
+  const ACCOUNT_IMPL = "0x269BE277E5bd92aAbE4A194692D0737C15232823"
   const CHAIN_ID = 80001
 
   const ENTRY_POINT = "0x5FF137D4b0FDCD49DcA30c7CF57E578a026d2789"
-  // const BUNDLER_RPC = "https://api.stackup.sh/v1/node/cdfe0de4e20e67c8ab40cbd357c2d152fd707c26e7ff3e52dc2a8a8fefc32bca"
-  const BUNDLER_RPC = "https://mumbai.voltaire.candidewallet.com/rpc"
+  const BUNDLER_RPC = "https://api.stackup.sh/v1/node/cdfe0de4e20e67c8ab40cbd357c2d152fd707c26e7ff3e52dc2a8a8fefc32bca"
+  // const BUNDLER_RPC = "https://mumbai.voltaire.candidewallet.com/rpc"
 
   let provider = useProvider()
   let { data: signer } = useSigner()
@@ -69,10 +81,36 @@ export default function Home() {
     signerOrProvider: provider,
   })
 
+  const readEntryPointContract = useContract({
+    address: ENTRY_POINT,
+    abi: EntryPointAbi,
+    signerOrProvider: provider,
+  })
+
+  const readLensHubContract = useContract({
+    address: LENS_HUB_ADDRESS,
+    abi: LensHubAbi,
+    signerOrProvider: provider,
+  })
+
+  const writeAbstractBall = useContract({
+    address: "0x4bc61e9608e07225bc704da29a5fe9f2976534e8",
+    abi: AbstractBallAbi,
+    signerOrProvider: signer,
+  })
 
   const initClient = async () => {
     const client = await Client.init(BUNDLER_RPC, ENTRY_POINT);
     setClient(client)
+  }
+
+  const fetchLensNFT = async () => {
+    const [, , , handle, pfp, metadata] = await readLensHubContract.getProfile(30885)
+    const pfpUrl = pfp.replace('ipfs://', 'https://ipfs.io/ipfs/')
+    console.log(pfpUrl);
+    setPfpUrl(pfpUrl)
+    setHandle(handle)
+
   }
   const getSessionNonce = async (account) => {
     // const readSmartAccountContract = useContract({
@@ -88,8 +126,8 @@ export default function Home() {
     builder.setSender(smartAccount)
     const nonce = await getNonce(smartAccount)
     builder.setNonce(nonce)
-    console.log(signature)
-    builder.setSignature(signature)
+    // console.log(signature)
+    // builder.setSignature(signature)
     const to = "0x78f83b36468bFf785046974e21A1449b47FD7e74"; // my account address
     const value = ethers.utils.parseEther("0.01"); // amount of ETH to send
     const data = "0x"; // calldata
@@ -99,16 +137,15 @@ export default function Home() {
       value,
       data
     );
-    console.log(transactionData.data)
     builder.setCallData(transactionData.data)
 
     // provider is an ethers.js JSON-RPC provider.
     // BUG in stackup userop.js
     // builder = builder.useMiddleware(Presets.Middleware.estimateUserOperationGas(provider))
     // builder = builder.useMiddleware(Presets.Middleware.getGasPrice(provider))
-    builder.setPreVerificationGas(BigNumber.from("300000"))
-    builder.setVerificationGasLimit(BigNumber.from("300000"))
-    builder.setCallGasLimit(BigNumber.from("300000"))
+    builder.setPreVerificationGas("90000")
+    builder.setVerificationGasLimit("90000")
+    builder.setCallGasLimit("90000")
     builder.setMaxFeePerGas(ethers.utils.parseUnits("2", "gwei"))
     builder.setMaxPriorityFeePerGas(ethers.utils.parseUnits("2", "gwei"))
     // console.log(builder.getOp())
@@ -118,19 +155,36 @@ export default function Home() {
     //   Presets.Middleware.verifyingPaymaster(paymasterRpc, paymasterCtx)
     // )
 
+
+
     // const userOp = await client.buildUserOperation(builder);
-    // console.log(userOp)
-    // return
-    // console.log(client)
+    console.log("userop", builder.getOp())
+    const hash = await getUserOpHash(builder.getOp())
+    const userOpSignature = await signer.signMessage(hash)
+    console.log("raw signature", userOpSignature)
+    builder.setSignature(userOpSignature)
+    console.log(builder.getOp())
+
+    const recoveredSigner = ethers.utils.verifyMessage(hash, userOpSignature);
+    console.log(recoveredSigner)
+
     const response = await client.sendUserOperation(builder);
+    console.log("response", response)
     const userOperationEvent = await response.wait();
-    console.log(userOperationEvent)
+    console.log("userOpEvent", userOperationEvent)
+  }
+
+  const getUserOpHash = async (userOp) => {
+    const hash = await readEntryPointContract.getUserOpHash(userOp)
+    console.log("hash", hash)
+    return hash
   }
 
   const signNon712 = async () => {
-    const sig = await signer.signMessage("submit UserOp")
-    console.log(sig)
-    setSignature(sig)
+    const hash = ethers.utils.id("submit UserOp")
+    const sig = await signer.signMessage(hash)
+    const recoveredSigner = ethers.utils.verifyMessage(hash, sig);
+    console.log(recoveredSigner)
   }
 
   const sign = async () => {
@@ -180,6 +234,8 @@ export default function Home() {
     const address = await readRegistryContract.account(ACCOUNT_PROXY, CHAIN_ID, LENS_PROFILE_TOKEN, 30885, 123)
     getSessionNonce(address)
     setSmartAccount(address)
+    const code = await provider.getCode(address);
+    if (code !== '0x') return setAccountCreated(true);
     return address
   }
 
@@ -187,23 +243,54 @@ export default function Home() {
     const address = await writeRegistryContract.createAccount(ACCOUNT_PROXY, CHAIN_ID, LENS_PROFILE_TOKEN, 30885, 123, 0x8129fc1c)
   }
 
-  const send = async () => {
-    console.log(smartAccount)
-    const to = "0x78f83b36468bFf785046974e21A1449b47FD7e74"; // my account address
-    const value = ethers.utils.parseEther("0.1"); // amount of ETH to send
-    const data = "0x"; // calldata
-
-    const transactionData = await prepareExecuteCall(
+  const approveNft = async (tokenId) => {
+    // approval
+    const iface = new Interface(AbstractBallAbi)
+    const to = "0x4bc61e9608e07225bc704da29a5fe9f2976534e8"; // abstract ball
+    const value = ethers.utils.parseEther("0"); // amount of ETH to send
+    const dataApprove = iface.encodeFunctionData("approve", [address, tokenId]); // calldata
+    const transactionDataApprove = await prepareExecuteCall(
       smartAccount,
       to,
       value,
-      data
+      dataApprove
     );
-
     // Execute encoded call
-    const { hash } = await signer.sendTransaction(transactionData);
-    console.log(hash)
+    const { hashApprove } = await signer.sendTransaction(transactionDataApprove);
   }
+
+  const transferNft = async (tokenId) => {
+    // transfer NFT
+    const iface = new Interface(AbstractBallAbi)
+    const to = "0x4bc61e9608e07225bc704da29a5fe9f2976534e8"; // abstract ball
+    const value = ethers.utils.parseEther("0"); // amount of ETH to send
+    const dataSend = iface.encodeFunctionData("transferFrom", [smartAccount, address, tokenId]); // calldata
+    const transactionDataSend = await prepareExecuteCall(
+      smartAccount,
+      to,
+      value,
+      dataSend
+    );
+    const { hashSend } = await signer.sendTransaction(transactionDataSend);
+  }
+
+  // const send = async () => {
+  //   console.log(smartAccount)
+  //   const to = "0x78f83b36468bFf785046974e21A1449b47FD7e74"; // my account address
+  //   const value = ethers.utils.parseEther("0.1"); // amount of ETH to send
+  //   const data = "0x"; // calldata
+
+  //   const transactionData = await prepareExecuteCall(
+  //     smartAccount,
+  //     to,
+  //     value,
+  //     data
+  //   );
+
+  //   // Execute encoded call
+  //   const { hash } = await signer.sendTransaction(transactionData);
+  //   console.log(hash)
+  // }
 
   const checkSig = async () => {
 
@@ -238,17 +325,34 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <ConnectButton />
-      <Button colorScheme="green" onClick={() => account()}>Get Account</Button>
-      <Text>Address is {smartAccount}</Text>
-      <Button colorScheme="green" onClick={() => createAccount()}>Create Account</Button>
-      {/* <Button colorScheme="green" onClick={() => initialize(smartAccount)}>Init</Button> */}
-      <Button colorScheme='blue' onClick={() => send()}>Send</Button>
-      <Button colorScheme='blue' onClick={() => bundle()}>Bundle</Button>
-      <Button colorScheme='red' onClick={() => signNon712()}>Sign</Button>
-      <Button colorScheme='purple' onClick={() => checkSig()}>Check sig</Button>
-      <Button colorScheme='purple' onClick={() => sign()}>Sign 712</Button>
-      <Button colorScheme='blue' onClick={() => sig()}>sig</Button>
+      <Flex>
+        <Flex direction="column">
+          <Box boxSize='sm'>
+            <Text as="b">{handle}</Text>
+            <Image src={pfpUrl} alt='Profile' />
+            <Text><Text as="u">Smart Account Address: </Text>{smartAccount}</Text>
+            {!accountCreated && <Button colorScheme="green" onClick={() => createAccount()}>Create Account</Button>}
+          </Box>
+        </Flex>
+        <Flex direction="column" ml="2rem">
+          <Text as="b">AbstractBall NFT</Text>
+          <Input mt="0.5rem"
+            placeholder={"tokenId"}
+            value={tokenId}
+            onChange={(e) => {
+              setTokenId(e.target.value);
+            }}></Input>
+          <Button mt="0.5rem" colorScheme='blue' onClick={() => approveNft(tokenId)}>Approve NFT</Button>
+          <Button mt="0.5rem" colorScheme='blue' onClick={() => transferNft(tokenId)}>Transfer NFT back</Button>
+        </Flex>
+        <Flex direction="column" ml="2rem">
+          <Text as="b">Account Abstraction</Text>
+          <Button mt="0.5rem" colorScheme='purple' onClick={() => sign()}>Start Session</Button>
+          <Button mt="0.5rem" colorScheme='green' onClick={() => bundle()}>Post</Button>
+          <Button mt="0.5rem" colorScheme='green' onClick={() => bundle()}>Comment</Button>
+          <Button mt="0.5rem" colorScheme='green' onClick={() => bundle()}>Mirror</Button>
+        </Flex>
+      </Flex >
     </>
   )
 }
