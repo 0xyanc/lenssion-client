@@ -4,7 +4,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 const Header = () => {
   return (
     <Flex h="5vh" p="2rem" justifyContent="space-between" alignItems="center">
-      <Text as="b">LensSion</Text>
+      <Text as="b">Lenssion</Text>
 
       <ConnectButton showBalance={false} />
     </Flex>
